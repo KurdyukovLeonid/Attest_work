@@ -11,23 +11,27 @@ class PriceMachine:
         self.export_file = "output.html"
 
     def load_prices(self):
+        """Загружает цены из CSV файлов в указанном директории."""
         self._scan_directory()
         return self.results
 
     def _scan_directory(self):
+        """Сканирует директорию на наличие файлов с ценами."""
         all_files = list(Path(self.directory).glob("*price*.csv"))
         for file in all_files:
-            if re.search(r'\bprice\b', file.stem):
+            if re.search(r'\bprice\b', file.stem):  # Проверяет, что имя файла содержит "price"
                 with open(file, encoding="utf-8") as input_file:
                     reader = csv.DictReader(input_file, delimiter=';')
                     self._parse_csv(reader, file.stem)
 
     def _parse_csv(self, reader, file_stem):
+        """Парсит CSV файл и добавляет данные о ценах и продуктах в результаты."""
         print(f"Columns found: {reader.fieldnames}")
-        product_column = ""
-        price_column = ""
-        weight_column = ""
+        product_column = None
+        price_column = None
+        weight_column = None
 
+        # Определяем, какие колонки соответствуют продукту, цене и весу
         for index, column in enumerate(reader.fieldnames):
             if column in ["название", "продукт", "товар", "наименование"]:
                 product_column = index
@@ -36,7 +40,8 @@ class PriceMachine:
             elif column in ["фасовка", "масса", "вес"]:
                 weight_column = index
 
-        if product_column and price_column and weight_column:
+        if product_column is not None and price_column is not None and weight_column is not None:
+            # Читаем строки из CSV и сохраняем данные о продуктах
             for row in reader:
                 product = row[reader.fieldnames[product_column]]
                 price = float(row[reader.fieldnames[price_column]])
@@ -50,9 +55,11 @@ class PriceMachine:
                     self.results[product] = {"prices": [(price, weight)], "filenames": {file_stem}}
 
     def export_to_html(self):
+        """Экспортирует результаты в HTML файл."""
         with open(self.export_file, "w", encoding="utf-8") as output_file:
             output_file.write(
                 "<!DOCTYPE html>\n<html>\n<head>\n"
+                "<meta charset=\"utf-8\">\n"  # Добавлено для корректного отображения кириллицы
                 "<title>Позиции продуктов</title>\n"
                 "</head>\n<body>\n<table>\n<tr>\n"
                 "<th>Номер</th>\n<th>Название</th>\n"
@@ -73,6 +80,7 @@ class PriceMachine:
             output_file.write("\n</table>\n</body>\n</html>")
 
     def find_text(self, search_term):
+        """Ищет продукты по заданному текстовому запросу."""
         found_positions = []
         for product, data in self.results.items():
             if search_term.lower() in product.lower():
@@ -81,6 +89,7 @@ class PriceMachine:
         return found_positions
 
     def display_results(self, search_term):
+        """Отображает результаты поиска продуктов."""
         positions = self.find_text(search_term)
         sorted_positions = []
 
@@ -90,7 +99,7 @@ class PriceMachine:
                 for filename in filenames:
                     sorted_positions.append((product, price, weight, filename, price_per_kg))
 
-        sorted_positions.sort(key=lambda x: x[4])
+        sorted_positions.sort(key=lambda x: x[4])  # Сортируем по цене за кг
 
         print(f"{'№':<3} {'Наименование':<30} {'Цена':<10} {'Вес':<5} {'Файл':<20} {'Цена за кг.':<10}")
         for index, (product, price, weight, filename, price_per_kg) in enumerate(sorted_positions, start=1):
@@ -98,14 +107,14 @@ class PriceMachine:
 
 
 if __name__ == "__main__":
-    pm = PriceMachine(".\\files")
-    pm.load_prices()
-    pm.export_to_html()
+    pm = PriceMachine(".\\files")  # Укажите правильный путь к директории с файлами
+    pm.load_prices()  # Загружаем цены из CSV файлов
+    pm.export_to_html()  # Экспортируем результаты в HTML файл
 
     while True:
         user_input = input("Введите текст для поиска или 'exit' для завершения: ")
         if user_input == "exit":
             break
-        pm.display_results(user_input)
+        pm.display_results(user_input)  # Отображаем результаты поиска
 
     print("Работа завершена.")
